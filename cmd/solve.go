@@ -7,6 +7,59 @@ import (
 	"strings"
 )
 
+type PuzzleSolver struct {
+	columnFilters []string
+	rowFilters    []string
+}
+
+func (p PuzzleSolver) Solve() ([][]string, error) {
+	selectedPokemon := make(map[string]bool)
+	cellFilterNames := make([][]string, len(p.rowFilters))
+	for i, rowFilter := range p.rowFilters {
+		cellFilterNames[i] = make([]string, len(p.columnFilters))
+		for j, colFilter := range p.columnFilters {
+			cellFilterObjects, err := filter.NewPokemonFilters([]string{rowFilter, colFilter})
+			if err != nil {
+				return nil, err
+			}
+			pokemon := cellFilterObjects.Apply()
+			for _, pokemonName := range pokemon {
+				if !selectedPokemon[pokemonName] {
+					selectedPokemon[pokemonName] = true
+					cellFilterNames[i][j] = pokemonName
+					break
+				}
+			}
+		}
+	}
+	return cellFilterNames, nil
+}
+
+func PrintSolvedPuzzle(columnFilters, rowFilters []string, cellFilterNames [][]string) {
+	filterDescriptionPadding := 16
+	maxLength := filterDescriptionPadding
+	for _, row := range cellFilterNames {
+		for _, cellFilter := range row {
+			if len(cellFilter) > maxLength {
+				maxLength = len(cellFilter)
+			}
+		}
+	}
+	fmt.Printf("%-*s|", filterDescriptionPadding, "")
+	for _, colFilter := range columnFilters {
+		fmt.Printf(" %-*s |", maxLength, colFilter)
+	}
+	fmt.Println()
+	fmt.Println(strings.Repeat("-", filterDescriptionPadding+1+(maxLength+3)*len(columnFilters)))
+	for i, row := range cellFilterNames {
+		fmt.Printf(" %*s |", filterDescriptionPadding-2, rowFilters[i%len(rowFilters)])
+		for _, cellFilter := range row {
+			fmt.Printf(" %-*s |", maxLength, cellFilter)
+		}
+		fmt.Println()
+	}
+}
+
 // solveCmd represents the solve command
 var solveCmd = &cobra.Command{
 	Use:  "solve",
@@ -19,47 +72,14 @@ var solveCmd = &cobra.Command{
 		rowFilters := strings.Split(args[1], ",")
 		fmt.Println("col:", rowFilters)
 
-		selectedPokemon := make(map[string]bool)
-		var cellFilterNames = make([]string, len(rowFilters)*len(columnFilters))
-		for i, rowFilter := range rowFilters {
-			for j, colFilter := range columnFilters {
-				cellFilterObjects, err := filter.NewPokemonFilters([]string{rowFilter, colFilter})
-				if err != nil {
-					panic(err)
-				}
-				pokemon := cellFilterObjects.Apply()
-				for _, pokemonName := range pokemon {
-					if !selectedPokemon[pokemonName] {
-						selectedPokemon[pokemonName] = true
-						cellFilterNames[i*len(columnFilters)+j] = pokemonName
-						break
-					}
-				}
-			}
+		puzzleSolver := PuzzleSolver{columnFilters, rowFilters}
+		solution, err := puzzleSolver.Solve()
+		if err != nil {
+			panic(err)
 		}
 
 		fmt.Println("Solved!")
-		filterDescriptionPadding := 16
-		maxLength := filterDescriptionPadding
-		for _, cellFilter := range cellFilterNames {
-			if len(cellFilter) > maxLength {
-				maxLength = len(cellFilter)
-			}
-		}
-		fmt.Printf("%-*s|", filterDescriptionPadding, "")
-		for _, colFilter := range columnFilters {
-			fmt.Printf(" %-*s |", maxLength, colFilter)
-		}
-		fmt.Println()
-		fmt.Println(strings.Repeat("-", filterDescriptionPadding+1+(maxLength+3)*len(columnFilters)))
-		for i := 0; i < len(columnFilters); i++ {
-			fmt.Printf(" %*s |", filterDescriptionPadding-2, rowFilters[i%len(rowFilters)])
-			currentRow := cellFilterNames[i*len(columnFilters) : (i+1)*len(columnFilters)]
-			for j := 0; j < len(currentRow); j++ {
-				fmt.Printf(" %-*s |", maxLength, currentRow[j])
-			}
-			fmt.Println()
-		}
+		PrintSolvedPuzzle(columnFilters, rowFilters, solution)
 	},
 }
 

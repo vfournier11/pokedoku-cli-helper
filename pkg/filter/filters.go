@@ -2,9 +2,10 @@ package filter
 
 import (
 	"fmt"
-	"github.com/mtslzr/pokeapi-go"
 	"sort"
 	"strings"
+
+	"github.com/mtslzr/pokeapi-go"
 )
 
 type PokemonMythicalFilter struct {
