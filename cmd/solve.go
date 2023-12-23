@@ -15,10 +15,10 @@ var solveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("solve called")
 
-		rowFilters := strings.Split(args[0], ",")
-		fmt.Println("row:", rowFilters)
-		colFilters := strings.Split(args[1], ",")
-		fmt.Println("col:", colFilters)
+		colFilters := strings.Split(args[0], ",")
+		fmt.Println("row:", colFilters)
+		rowFilters := strings.Split(args[1], ",")
+		fmt.Println("col:", rowFilters)
 		//var rowFilterObjects []PokemonFilter
 
 		selectedPokemon := make(map[string]bool)
@@ -46,8 +46,8 @@ var solveCmd = &cobra.Command{
 		}
 
 		fmt.Println("Solved!")
-		filterDescriptionPadding := 12
-		maxLength := 0
+		filterDescriptionPadding := 16
+		maxLength := filterDescriptionPadding
 		for _, cellFilter := range cellFilters {
 			if len(cellFilter) > maxLength {
 				maxLength = len(cellFilter)
@@ -70,12 +70,51 @@ var solveCmd = &cobra.Command{
 	},
 }
 
+type PokemonMythicalFilter struct {
+}
+
+func (f PokemonMythicalFilter) Apply() []string {
+	return []string{
+		"mew",
+		"celebi",
+		"jirachi",
+		"deoxys",
+		"manaphy",
+		"darkrai",
+		"shaymin",
+		"arceus",
+		"victini",
+		"keldeo",
+		"meloetta",
+		"genesect",
+		"diancie",
+		"hoopa",
+		"volcanion",
+		"magearna",
+		"marshadow",
+		"zeraora",
+		"meltan",
+		"melmetal",
+	}
+}
+
 func PokemonFilterFactory(filterDescription string) (PokemonFilter, error) {
 	filterSplit := strings.Split(filterDescription, ":")
 	filterType := filterSplit[0]
 	filterValue := filterSplit[1]
 
 	switch filterType {
+	case "custom", "c":
+		switch filterValue {
+		case "legendary", "l":
+			return PokemonLegendaryFilter{}, nil
+		case "mythical", "m":
+			return PokemonMythicalFilter{}, nil
+		case "beast", "b":
+			return PokemonAbilityFilter{"beast-boost"}, nil
+		default:
+			return nil, fmt.Errorf("invalid custom filter: %s", filterValue)
+		}
 	case "type", "t":
 		return PokemonTypeFilter{filterValue}, nil
 	case "generation", "g":
@@ -132,6 +171,63 @@ func (f PokemonFilters) Apply() []string {
 	return pokemonNames
 }
 
+type PokemonLegendaryFilter struct {
+}
+
+func (f PokemonLegendaryFilter) Apply() []string {
+	return []string{
+		"articuno",
+		"zapdos",
+		"moltres",
+		"mewtwo",
+		"raikou",
+		"entei",
+		"suicune",
+		"lugia",
+		"ho-oh",
+		"regirock",
+		"regice",
+		"registeel",
+		"latias",
+		"latios",
+		"kyogre",
+		"groudon",
+		"rayquaza",
+		"uxie",
+		"mesprit",
+		"azelf",
+		"dialga",
+		"palkia",
+		"heatran",
+		"regigigas",
+		"giratina",
+		"cresselia",
+		"cobalion",
+		"terrakion",
+		"virizion",
+		"tornadus",
+		"thundurus",
+		"reshiram",
+		"zekrom",
+		"landorus",
+		"kyurem",
+		"xerneas",
+		"yveltal",
+		"zygarde",
+		"tapu-koko",
+		"tapu-lele",
+		"tapu-bulu",
+		"tapu-fini",
+		"cosmog",
+		"cosmoem",
+		"solgaleo",
+		"lunala",
+		"necrozma",
+		"magearna",
+		"marshadow",
+	}
+}
+
 type PokemonTypeFilter struct {
 	typeID string
 }
@@ -163,6 +259,24 @@ func (f PokemonGenerationFilter) Apply() []string {
 	var pokemonNames []string
 	for _, pokemon := range generationResult.PokemonSpecies {
 		pokemonNames = append(pokemonNames, pokemon.Name)
+	}
+	sort.Strings(pokemonNames)
+	return pokemonNames
+}
+
+type PokemonAbilityFilter struct {
+	abilityID string
+}
+
+func (f PokemonAbilityFilter) Apply() []string {
+	abilityResult, err := pokeapi.Ability(f.abilityID)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	var pokemonNames []string
+	for _, pokemon := range abilityResult.Pokemon {
+		pokemonNames = append(pokemonNames, pokemon.Pokemon.Name)
 	}
 	sort.Strings(pokemonNames)
 	return pokemonNames
