@@ -2,9 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/mtslzr/pokeapi-go"
 	"github.com/spf13/cobra"
-	"sort"
+	"pokedoku/pkg/filter"
 	"strings"
 )
 
@@ -15,30 +14,24 @@ var solveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("solve called")
 
-		colFilters := strings.Split(args[0], ",")
-		fmt.Println("row:", colFilters)
+		columnFilters := strings.Split(args[0], ",")
+		fmt.Println("row:", columnFilters)
 		rowFilters := strings.Split(args[1], ",")
 		fmt.Println("col:", rowFilters)
-		//var rowFilterObjects []PokemonFilter
 
 		selectedPokemon := make(map[string]bool)
-		var cellFilters = make([]string, len(rowFilters)*len(colFilters))
+		var cellFilterNames = make([]string, len(rowFilters)*len(columnFilters))
 		for i, rowFilter := range rowFilters {
-			currentRowFilter, err := PokemonFilterFactory(rowFilter)
-			if err != nil {
-				panic(err)
-			}
-
-			for j, colFilter := range colFilters {
-				currentColFilter, err := PokemonFilterFactory(colFilter)
+			for j, colFilter := range columnFilters {
+				cellFilterObjects, err := filter.NewPokemonFilters([]string{rowFilter, colFilter})
 				if err != nil {
 					panic(err)
 				}
-				pokemon := PokemonFilters{[]PokemonFilter{currentRowFilter, currentColFilter}}.Apply()
+				pokemon := cellFilterObjects.Apply()
 				for _, pokemonName := range pokemon {
 					if !selectedPokemon[pokemonName] {
 						selectedPokemon[pokemonName] = true
-						cellFilters[i*len(colFilters)+j] = pokemonName
+						cellFilterNames[i*len(columnFilters)+j] = pokemonName
 						break
 					}
 				}
@@ -48,238 +41,26 @@ var solveCmd = &cobra.Command{
 		fmt.Println("Solved!")
 		filterDescriptionPadding := 16
 		maxLength := filterDescriptionPadding
-		for _, cellFilter := range cellFilters {
+		for _, cellFilter := range cellFilterNames {
 			if len(cellFilter) > maxLength {
 				maxLength = len(cellFilter)
 			}
 		}
 		fmt.Printf("%-*s|", filterDescriptionPadding, "")
-		for _, colFilter := range colFilters {
+		for _, colFilter := range columnFilters {
 			fmt.Printf(" %-*s |", maxLength, colFilter)
 		}
 		fmt.Println()
-		fmt.Println(strings.Repeat("-", filterDescriptionPadding+1+(maxLength+3)*len(colFilters)))
-		for i := 0; i < len(colFilters); i++ {
+		fmt.Println(strings.Repeat("-", filterDescriptionPadding+1+(maxLength+3)*len(columnFilters)))
+		for i := 0; i < len(columnFilters); i++ {
 			fmt.Printf(" %*s |", filterDescriptionPadding-2, rowFilters[i%len(rowFilters)])
-			currentRow := cellFilters[i*len(colFilters) : (i+1)*len(colFilters)]
+			currentRow := cellFilterNames[i*len(columnFilters) : (i+1)*len(columnFilters)]
 			for j := 0; j < len(currentRow); j++ {
 				fmt.Printf(" %-*s |", maxLength, currentRow[j])
 			}
 			fmt.Println()
 		}
 	},
-}
-
-type PokemonMythicalFilter struct {
-}
-
-func (f PokemonMythicalFilter) Apply() []string {
-	return []string{
-		"mew",
-		"celebi",
-		"jirachi",
-		"deoxys",
-		"manaphy",
-		"darkrai",
-		"shaymin",
-		"arceus",
-		"victini",
-		"keldeo",
-		"meloetta",
-		"genesect",
-		"diancie",
-		"hoopa",
-		"volcanion",
-		"magearna",
-		"marshadow",
-		"zeraora",
-		"meltan",
-		"melmetal",
-	}
-}
-
-func PokemonFilterFactory(filterDescription string) (PokemonFilter, error) {
-	filterSplit := strings.Split(filterDescription, ":")
-	filterType := filterSplit[0]
-	filterValue := filterSplit[1]
-
-	switch filterType {
-	case "custom", "c":
-		switch filterValue {
-		case "legendary", "l":
-			return PokemonLegendaryFilter{}, nil
-		case "mythical", "m":
-			return PokemonMythicalFilter{}, nil
-		case "beast", "b":
-			return PokemonAbilityFilter{"beast-boost"}, nil
-		default:
-			return nil, fmt.Errorf("invalid custom filter: %s", filterValue)
-		}
-	case "type", "t":
-		return PokemonTypeFilter{filterValue}, nil
-	case "generation", "g":
-		switch filterValue {
-		case "kanto", "1":
-			filterValue = "1"
-		case "johto", "2":
-			filterValue = "2"
-		case "hoenn", "3":
-			filterValue = "3"
-		case "sinnoh", "4":
-			filterValue = "4"
-		case "unova", "5":
-			filterValue = "5"
-		case "kalos", "6":
-			filterValue = "6"
-		case "alola", "7":
-			filterValue = "7"
-		case "galar", "8":
-			filterValue = "8"
-		default:
-			return nil, fmt.Errorf("invalid generation: %s", filterValue)
-		}
-
-		return PokemonGenerationFilter{generation: filterValue}, nil
-	default:
-		return nil, fmt.Errorf("invalid filter type: %s", filterType)
-	}
-}
-
-type PokemonFilter interface {
-	Apply() []string
-}
-
-type PokemonFilters struct {
-	filters []PokemonFilter
-}
-
-func (f PokemonFilters) Apply() []string {
-	var pokemonNamesMap = make(map[string]int)
-	for _, filter := range f.filters {
-		for _, pokemonName := range filter.Apply() {
-			pokemonNamesMap[pokemonName]++
-		}
-	}
-
-	var pokemonNames []string
-	for pokemonName, count := range pokemonNamesMap {
-		if count == len(f.filters) {
-			pokemonNames = append(pokemonNames, pokemonName)
-		}
-	}
-	sort.Strings(pokemonNames)
-	return pokemonNames
-}
-
-type PokemonLegendaryFilter struct {
-}
-
-func (f PokemonLegendaryFilter) Apply() []string {
-	return []string{
-		"articuno",
-		"zapdos",
-		"moltres",
-		"mewtwo",
-		"raikou",
-		"entei",
-		"suicune",
-		"lugia",
-		"ho-oh",
-		"regirock",
-		"regice",
-		"registeel",
-		"latias",
-		"latios",
-		"kyogre",
-		"groudon",
-		"rayquaza",
-		"uxie",
-		"mesprit",
-		"azelf",
-		"dialga",
-		"palkia",
-		"heatran",
-		"regigigas",
-		"giratina",
-		"cresselia",
-		"cobalion",
-		"terrakion",
-		"virizion",
-		"tornadus",
-		"thundurus",
-		"reshiram",
-		"zekrom",
-		"landorus",
-		"kyurem",
-		"xerneas",
-		"yveltal",
-		"zygarde",
-		"tapu-koko",
-		"tapu-lele",
-		"tapu-bulu",
-		"tapu-fini",
-		"cosmog",
-		"cosmoem",
-		"solgaleo",
-		"lunala",
-		"necrozma",
-		"magearna",
-		"marshadow",
-	}
-}
-
-type PokemonTypeFilter struct {
-	typeID string
-}
-
-func (f PokemonTypeFilter) Apply() []string {
-	typeResult, err := pokeapi.Type(f.typeID)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	var pokemonNames []string
-	for _, pokemon := range typeResult.Pokemon {
-		pokemonNames = append(pokemonNames, pokemon.Pokemon.Name)
-	}
-	sort.Strings(pokemonNames)
-	return pokemonNames
-}
-
-type PokemonGenerationFilter struct {
-	generation string
-}
-
-func (f PokemonGenerationFilter) Apply() []string {
-	generationResult, err := pokeapi.Generation(f.generation)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	var pokemonNames []string
-	for _, pokemon := range generationResult.PokemonSpecies {
-		pokemonNames = append(pokemonNames, pokemon.Name)
-	}
-	sort.Strings(pokemonNames)
-	return pokemonNames
-}
-
-type PokemonAbilityFilter struct {
-	abilityID string
-}
-
-func (f PokemonAbilityFilter) Apply() []string {
-	abilityResult, err := pokeapi.Ability(f.abilityID)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	var pokemonNames []string
-	for _, pokemon := range abilityResult.Pokemon {
-		pokemonNames = append(pokemonNames, pokemon.Pokemon.Name)
-	}
-	sort.Strings(pokemonNames)
-	return pokemonNames
 }
 
 func init() {

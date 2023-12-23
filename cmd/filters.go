@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"pokedoku/pkg/filter"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -16,15 +17,10 @@ var filtersCmd = &cobra.Command{
 		fmt.Println("Filter: " + filterArg)
 		filters := strings.Split(filterArg, "_AND_")
 
-		var pokemonFilters []PokemonFilter
-		for _, filterDescription := range filters {
-			filter, err := PokemonFilterFactory(filterDescription)
-			if err != nil {
-				fmt.Println(err)
-			}
-			pokemonFilters = append(pokemonFilters, filter)
+		allFilters, err := filter.NewPokemonFilters(filters)
+		if err != nil {
+			panic(err)
 		}
-		allFilters := PokemonFilters{pokemonFilters}
 		pokemonNames := allFilters.Apply()
 		for _, pokemonName := range pokemonNames {
 			fmt.Println(pokemonName)
