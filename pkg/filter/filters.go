@@ -53,6 +53,8 @@ func PokemonFilterFactory(filterDescription string) (PokemonFilter, error) {
 		default:
 			return nil, fmt.Errorf("invalid custom filter: %s", filterValue)
 		}
+	case "ability", "a":
+		return PokemonAbilityFilter{filterValue}, nil
 	case "type", "t":
 		return PokemonTypeFilter{filterValue}, nil
 	case "generation", "g":
