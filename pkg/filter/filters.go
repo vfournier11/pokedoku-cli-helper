@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mtslzr/pokeapi-go"
+	pokeapiExtra "pokedoku/internal/domain/pokeapi"
 )
 
 type PokemonMythicalFilter struct {
@@ -50,6 +51,8 @@ func PokemonFilterFactory(filterDescription string) (PokemonFilter, error) {
 			return PokemonMythicalFilter{}, nil
 		case "beast", "b":
 			return PokemonAbilityFilter{"beast-boost"}, nil
+		case "mega", "mega-evolution", "mega-evolutions":
+			return PokemonMegaFilter{}, nil
 		default:
 			return nil, fmt.Errorf("invalid custom filter: %s", filterValue)
 		}
@@ -231,5 +234,16 @@ func (f PokemonAbilityFilter) Apply() []string {
 		pokemonNames = append(pokemonNames, pokemon.Pokemon.Name)
 	}
 	sort.Strings(pokemonNames)
+	return pokemonNames
+}
+
+type PokemonMegaFilter struct {
+}
+
+func (f PokemonMegaFilter) Apply() []string {
+	pokemonNames, err := pokeapiExtra.Mega()
+	if err != nil {
+		fmt.Println(err)
+	}
 	return pokemonNames
 }
